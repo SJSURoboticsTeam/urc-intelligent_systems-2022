@@ -1,5 +1,4 @@
 from math import floor
-import numpy as np
 from rplidar import RPLidar
 
 PORT_NAME = 'COM6'
