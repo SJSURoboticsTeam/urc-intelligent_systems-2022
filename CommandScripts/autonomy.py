@@ -7,6 +7,8 @@ import serial.tools.list_ports as port_list
 from modules.LSM303 import Compass
 from modules.GPS import gpsRead
 from modules.Serial import SerialSystem
+from modules.MPU6050 import MPU6050
+
 
 class Autonomy:
     def __init__(self, serial, url, max_speed, max_steering, GPS_coordinate_map):
@@ -116,13 +118,21 @@ class Autonomy:
         self.jsonify_commands(commands)
 
     def steer_left(self, commands):
-        self.commands[5] = -self.max_steering
+        self.commands[5] =  -self.max_steering
         self.jsonify_commands(commands)
 
     def steer_right(self, commands):
         self.commands[5] = self.max_steering
         self.jsonify_commands(commands)
+    
+    def controlSteer(self, commands, controlInput):
+        self.commands[5] = controlInput
+        self.jsonify_commands(commands)       
 
+    def controlDrive(self, commands, controlInput):
+        self.commands[4] = controlInput
+        self.jsonify_commands(commands)       
+        
     def stop_rover(self, commands):
         self.commands = [0,0,0,'D',0,0]
         self.jsonify_commands(commands)
@@ -133,13 +143,28 @@ class Autonomy:
 
 
     def get_steering(self, lon1, lat1, lon2, lat2):
-        
-        final_angle = Compass.get_heading()/self.get_bearing(lon1, lat1, lon2, lat2)
+        crosstrackError = self.get_distance
+        wheelBase = 10
+        headingError = self.get_bearing
 
-        if(final_angle >= 0 and final_angle <= 1):
-            print("Rover moving forward!")
-            self.forward_rover(self.commands)
-            
+        
+        # k proportional gain ks softening coefficient to smooth small heading error controls
+        k = 1
+        ks = 1
+
+        mpu = MPU6050()
+        mpu.read_data
+        dt = 1
+        velocity = mpu.ACCEL_ZOUT_H/dt  
+        final_angle = headingError + math.atan2(k*crosstrackError,ks+velocity)
+
+
+        if(final_angle > self.max_steering):
+            final_angle = self.max_steering
+
+        if(final_angle < -self.max_steering):
+            final_angle = -self.max_steering
+
         elif(final_angle > 1 and final_angle <= 8):
             print("Rover turning left!")
             self.steer_left(self.commands)
@@ -150,6 +175,8 @@ class Autonomy:
             self.steer_right(self.commands)
             
 
+        print("Rover turning with a value of " + final_angle)
+        self.ste
         elif(lon2==lon1 and lat1==lat2):
             print("Rover has reached destination!")
             self.stop_rover(self.commands)
